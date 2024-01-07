@@ -1,0 +1,33 @@
+vao container chua kafka: bash kafka-topics.sh --list --bootstrap-server 0.0.0.0:9092 --> list topic
+
+kafka-console-consumer --bootstrap-server 0.0.0.0:9092 --topic create-accounts-result-json-topic --from-beginning 
+kafka-console-consumer --bootstrap-server 0.0.0.0:9092 --topic  dbserver1_postgres.public.example_table
+
+vao container postgresql -> var/lib/postgree/data 
+    Cách Chỉnh Sửa File:
+    Truy Cập File: Truy cập file postgresql.conf thông qua command line hoặc file manager tùy thuộc vào hệ thống của bạn.
+    Chỉnh Sửa Các Thiết Lập:
+    Tìm và chỉnh sửa (hoặc thêm nếu cần) các dòng sau:
+    makefile
+    Copy code
+    wal_level = logical
+    max_replication_slots = 10
+    max_wal_senders = 10
+    Lưu File và Khởi Động Lại PostgreSQL: Sau khi chỉnh sửa, lưu file và khởi động lại dịch vụ PostgreSQL để áp dụng các thay đổi.
+    Khởi Động Lại PostgreSQL:
+    Bạn có thể khởi động lại PostgreSQL thông qua dịch vụ quản lý hệ thống như systemctl trên Linux, ví dụ: sudo systemctl restart postgresql.
+    Trong Docker, bạn có thể khởi động lại container PostgreSQL.
+    Sử dụng SQL Command:
+    Đối với một số thiết lập, bạn có thể sử dụng SQL command để thay đổi chúng trong phiên làm việc hiện tại, nhưng wal_level, max_replication_slots, và max_wal_senders thường yêu cầu chỉnh sửa trực tiếp trên file postgresql.conf và cần khởi động lại PostgreSQL để áp dụng.
+    Lưu ý:
+    Hãy cẩn thận khi chỉnh sửa file postgresql.conf vì các thay đổi sai có thể ảnh hưởng đến hoạt động của PostgreSQL.
+    Đối với các cấu hình liên quan đến bảo mật hoặc hiệu suất, hãy chắc chắn rằng bạn hiểu rõ tác động của các thay đổi trước khi áp dụng.
+vao container postgresql -> var/lib/postgree/data/ pg_hba.cof them quyen, debezium_user nay xem bang cach:  curl http://localhost:8083/connectors/debezium-postgres-connector/ check field database.hostname
+    host replication debezium_user 0.0.0.0/0 md5
+    host replication postgres 0.0.0.0/0 md5  
+
+
+tao debezium cònig, file json
+sau do run: curl -X POST -H  "Content-Type: application/json" --data @debezium_connect_conf.json    http://localhost:8083/connectors 
+xoa: curl -X DELETE http://localhost:8083/connectors/debezium-postgres-connector
+kiem tra: curl http://localhost:8083/connectors/debezium-postgres-connector/status

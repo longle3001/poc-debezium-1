@@ -1,0 +1,106 @@
+version: '3'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    restart: on-failure
+    networks:
+      - kafka-net
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    restart: on-failure
+    networks:
+      -  kafka-net
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  postgres:
+    image: debezium/example-postgres:1.6
+    container_name: postgres
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=yourdb
+      - WAL_LEVEL=logical
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - kafka-net
+
+  connect:
+    image: confluentinc/cp-kafka-connect:latest
+    container_name: debezium-connect
+    # restart: on-failure
+    networks:
+      - kafka-net
+    depends_on:
+      - kafka
+      - zookeeper
+    ports:
+      - 8083:8083
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: 'kafka:9092'
+      CONNECT_GROUP_ID: 1
+      CONNECT_CONFIG_STORAGE_TOPIC: my_connect_configs
+      CONNECT_OFFSET_STORAGE_TOPIC: my_connect_offsets
+      CONNECT_STATUS_STORAGE_TOPIC: my_connect_statuses
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: 'false'
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: 'false'
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+      CONNECT_PLUGIN_PATH: '/usr/share/java,/usr/share/confluent-hub-components'
+    volumes:
+      - /Users/longle/Desktop/Code/demo_postgre_debezium_kafka/mysql-connector-j-8.2.0.jar:/usr/share/java/mysql-connector-j-8.2.0.jar
+    command: 
+      - bash 
+      - -c 
+      - |
+        cp /usr/share/java/mysql-connector-j-8.2.0.jar /usr/share/java/
+        confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:10.7.4
+        confluent-hub install debezium/debezium-connector-postgresql:latest --no-prompt
+        /etc/confluent/docker/run
+
+
+  mysql:
+    image: mysql
+    platform: linux/amd64
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: mydatabase
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: mypassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - my-db:/var/lib/mysql
+    networks:
+      - kafka-net
+
+volumes:
+  my-db:
+
+networks:
+  kafka-net:
+    driver: bridge

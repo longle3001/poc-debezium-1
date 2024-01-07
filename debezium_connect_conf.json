@@ -1,0 +1,16 @@
+{
+    "name": "debezium-postgres-connector",
+    "config": {
+      "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+      "database.hostname": "postgres",
+      "database.port": "5432",
+      "database.user": "postgres",
+      "database.password": "postgres",
+      "database.dbname": "yourdb",
+      "database.server.name": "dbserver1_postgres",
+      "table.whitelist": "public.example_table",
+      "snapshot.mode": "initial",
+      "include.schema.changes": "true",
+      "topic.prefix": "cdc"
+    }
+  }
